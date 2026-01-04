@@ -1,34 +1,416 @@
 import streamlit as st
 import math
 
-# --- 1. 傷害計算核心 ---
-def calculate_damage(power, atk_stat, def_stat, criticle, wall_on, stab_bonus, typem, typdef, plus, move_name):
-    if def_stat <= 0: def_stat = 1
+# --- 1. 完整保留原本的函數與數據 (完全未動) ---
 
-    inner = math.floor(22 * power * atk_stat / def_stat)
-    base = math.floor(inner / 72) + 2
-    damagemin = math.floor(base * 0.85)
-    damagemax = math.floor(base * 1)
-    
-    if criticle:
-        damagemin = math.floor(damagemin * 1.5)
-        damagemax = math.floor(damagemax * 1.5)
-    elif wall_on:
-        damagemin = math.floor(damagemin * 2/3)
-        damagemax = math.floor(damagemax * 2/3)
-        
-    dmin, dmax = damagemin, damagemax
-    if stab_bonus:   
-        damagemin = math.floor(damagemin * 1.5)
-        damagemax = math.floor(damagemax * 1.5)
+def Spower(power,c,d,buffatk,buffdef,criticle,light,typatk,typem,typdef,status,buff,debuff,plus,move):
+    listdamage=[]
+    c*=buffatk ; d*=buffdef
+    inner=math.floor(22*power*c/d)
+    base=math.floor(inner/72)+2
+    damagemin=math.floor(base*0.85)
+    damagemax=math.floor(base*1)
+    if criticle==True:
+        damagemin*=1.5 ; damagemax*=1.5
+        light=False
+    if light==True:
+        damagemin=damagemin*2/3 ;  damagemax=damagemax*2/3 
+    if buff==True:
+        damagemin*=2 ; damagemax*=2
+    if debuff==True:
+        damagemin/=2 ; damagemax/=2   
+    damagemin=math.floor(damagemin) ; damagemax=math.floor(damagemax)
+    dmin=damagemin ; dmax=damagemax
+    if typem==typatk[0] or (len(typatk)>1 and typem==typatk[1]):   
+       damagemin=math.floor(damagemin*1.5) ; damagemax=math.floor(damagemax*1.5)
          
-    # --- 屬性表 (龍對妖精修正為 0) ---
-    multi = 1.0
-    chart = {
-        "normal": {"rock": 0.5, "ghost": 0, "steel": 0.5},
-        "fire": {"fire": 0.5, "water": 0.5, "grass": 2, "ice": 2, "bug": 2, "rock": 0.5, "dragon": 0.5, "steel": 2},
-        "water": {"fire": 2, "water": 0.5, "grass": 0.5, "ground": 2, "rock": 2, "dragon": 0.5},
-        "electric": {"water": 2, "electric": 0.5, "grass": 0.5, "ground": 0, "flying": 2},
-        "grass": {"fire": 0.5, "water": 2, "grass": 0.5, "poison": 0.5, "ground": 2, "flying": 0.5, "bug": 0.5, "rock": 2, "dragon": 0.5, "steel": 0.5},
-        "ice": {"fire": 0.5, "water": 0.5, "grass": 2, "ice": 0.5, "ground": 2, "flying": 2, "dragon": 2, "steel": 0.5},
-        "fighting": {"normal": 2, "ice": 2, "poison": 0.5, "flying": 0.5, "psychic": 0.5, "bug": 0.5, "rock": 2, "ghost": 0, "dark": 2, "steel": 2, "
+    for k in  range(0,len(typdef)):
+            if typem=="normal":
+                if typdef[k]=="steel":
+                     damagemin*=0.5 ; damagemax*=0.5
+                elif typdef[k]=="ghost":
+                     damagemin*=0 ; damagemax*=0
+            elif typem=="fighting":
+                if typdef[k] in ["normal", "steel", "rock", "ice", "dark"]:
+                     damagemin*=2 ; damagemax*=2
+                elif typdef[k] in ["poison", "bug", "flying", "psychic", "fairy"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+                elif typdef[k]=="ghost":
+                     damagemin*=0 ; damagemax*=0
+            elif typem=="flying":
+                if typdef[k] in ["fighting", "bug", "grass"]:
+                     damagemin*=2 ; damagemax*=2
+                elif typdef[k] in ["rock", "steel", "thunder"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+            elif typem=="poison":
+                if typdef[k] in ["grass", "fairy"]:
+                     damagemin*=2 ; damagemax*=2
+                elif typdef[k] in ["poison", "ground", "rock", "ghost"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+                elif typdef[k]=="steel":
+                     damagemin*=0 ; damagemax*=0
+            elif typem=="ground":
+                if move=="千箭齊發":
+                    if "flying" in typdef: continue
+                elif typdef[k] in ["poison", "rock", "steel", "fire", "electric"]:
+                    damagemin*=2 ; damagemax*=2
+                elif typdef[k] in ["bug", "grass"]:
+                    damagemin*=0.5 ; damagemax*=0.5
+                elif typdef[k]=="flying":
+                    damagemin*=0 ; damagemax*=0
+            elif typem=="rock":
+                if typdef[k] in ["flying", "bug", "fire", "ice"]:
+                     damagemin*=2 ; damagemax*=2
+                elif typdef[k] in ["fighting", "ground", "steel"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+            elif typem=="bug":
+                if typdef[k] in ["dark", "psychic", "grass"]:
+                     damagemin*=2 ; damagemax*=2
+                elif typdef[k] in ["fighting", "flying", "poison", "steel", "fire", "fairy", "ghost"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+            elif typem=="ghost":
+                if typdef[k] in ["ghost", "psychic"]:
+                     damagemin*=2 ; damagemax*=2
+                elif typdef[k]=="dark":
+                     damagemin*=0.5 ; damagemax*=0.5
+                elif typdef[k]=="normal":
+                     damagemin*=0 ; damagemax*=0
+            elif typem=="steel":
+                 if typdef[k] in ["ice", "fairy", "rock"]:
+                     damagemin*=2 ; damagemax*=2
+                 elif typdef[k] in ["electric", "fire", "water", "steel"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+            elif typem=="water":
+                 if typdef[k] in ["ground", "fire", "rock"]:
+                     damagemin*=2 ; damagemax*=2
+                 elif typdef[k] in ["grass", "dragon", "water"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+            elif typem=="grass":
+                  if typdef[k] in ["ground", "water", "rock"]:
+                     damagemin*=2 ; damagemax*=2
+                  elif typdef[k] in ["grass", "dragon", "fire", "steel", "flying", "bug", "poison"]: 
+                     damagemin*=0.5 ; damagemax*=0.5
+            elif typem=="fire":
+                  if typdef[k] in ["grass", "ice", "bug", "steel"]:
+                     damagemin*=2 ; damagemax*=2
+                  elif typdef[k] in ["fire", "dragon", "water", "rock"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+            elif typem=="electric":
+                  if typdef[k] in ["water", "flying"]:
+                     damagemin*=2 ; damagemax*=2
+                  elif typdef[k] in ["electric", "dragon", "grass"]:
+                     damagemin*=0.5 ; damagemax*=0.5 
+                  elif typdef[k]=="ground":
+                     damagemin*=0 ; damagemax*=0
+            elif typem=="psychic":
+                  if typdef[k] in ["fighting", "poison"]:
+                     damagemin*=2 ; damagemax*=2
+                  elif typdef[k] in ["steel", "psychic"]:
+                     damagemin*=0.5 ; damagemax*=0.5 
+                  elif typdef[k]=="dark":
+                      damagemin*=0 ; damagemax*=0
+            elif typem=="dragon":
+                  if typdef[k]=="dragon":
+                     damagemin*=2 ; damagemax*=2
+                  elif typdef[k]=="steel":
+                     damagemin*=0.5 ; damagemax*=0.5 
+                  elif typdef[k]=="fairy":
+                     if move!="歸無之光":
+                        damagemin*=0 ; damagemax*=0 
+            elif typem=="ice":      
+                  if typdef[k] in ["flying", "ground", "dragon", "grass"]:
+                     damagemin*=2 ; damagemax*=2
+                  elif typdef[k]=="water":
+                      if move=="冷凍乾燥":
+                         damagemin*=2 ; damagemax*=2
+                      else:
+                         damagemin*=0.5 ; damagemax*=0.5 
+                  elif typdef[k] in ["steel", "fire", "ice"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+            elif typem=="dark":
+                  if typdef[k] in ["ghost", "psychic"]:
+                     damagemin*=2 ; damagemax*=2
+                  elif typdef[k] in ["dark", "fighting", "fairy"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+            elif typem=="fairy":
+                  if typdef[k] in ["dragon", "dark", "fighting"]:
+                     damagemin*=2 ; damagemax*=2
+                  elif typdef[k] in ["steel", "poison", "fire"]:
+                     damagemin*=0.5 ; damagemax*=0.5         
+    damagemin=math.floor(damagemin) ; damagemax=math.floor(damagemax)
+    if plus==True:
+        if damagemin>(dmin*1.7) and damagemax>(dmax*1.7):
+            damagemin*=1.3 ; damagemax*=1.3
+        else:
+            damagemin*=1.2 ; damagemax*=1.2
+    listdamage.append(damagemin) ; listdamage.append(damagemax)
+    return listdamage
+
+def Ppower(power,a,b,buffatk,buffdef,criticle,reflect,typatk,typem,typdef,status,buff,debuff,plus,move):
+    listdamage=[]
+    a*=buffatk ; b*=buffdef
+    inner=math.floor(22*power*a/b)
+    base=math.floor(inner/72)+2
+    damagemin=math.floor(base*0.85)
+    damagemax=math.floor(base*1)
+    if criticle==True:
+        damagemin*=1.5 ; damagemax*=1.5
+        reflect=False
+    if reflect==True:
+        damagemin=damagemin*2/3 ;  damagemax=damagemax*2/3
+    if status==True:
+        damagemin*=0.5 ; damagemax*=0.5
+    if buff==True:
+        damagemin*=2 ; damagemax*=2
+    if debuff==True:
+        damagemin/=2 ; damagemax/=2
+    damagemin=math.floor(damagemin) ; damagemax=math.floor(damagemax)
+    dmin=damagemin ; dmax=damagemax
+    if typem==typatk[0] or (len(typatk)>1 and typem==typatk[1]):
+       damagemin=math.floor(damagemin*1.5) ; damagemax=math.floor(damagemax*1.5)
+    
+    for k in  range(0,len(typdef)):
+            if typem=="normal":
+                if typdef[k]=="steel":
+                     damagemin*=0.5 ; damagemax*=0.5
+                elif typdef[k]=="ghost":
+                     damagemin*=0 ; damagemax*=0
+            elif typem=="fighting":
+                if typdef[k] in ["normal", "steel", "rock", "ice", "dark"]:
+                     damagemin*=2 ; damagemax*=2
+                elif typdef[k] in ["poison", "bug", "flying", "psychic", "fairy"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+                elif typdef[k]=="ghost":
+                     damagemin*=0 ; damagemax*=0
+            elif typem=="flying":
+                if typdef[k] in ["fighting", "bug", "grass"]:
+                     damagemin*=2 ; damagemax*=2
+                elif typdef[k] in ["rock", "steel", "thunder"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+            elif typem=="poison":
+                if typdef[k] in ["grass", "fairy"]:
+                     damagemin*=2 ; damagemax*=2
+                elif typdef[k] in ["poison", "ground", "rock", "ghost"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+                elif typdef[k]=="steel":
+                     damagemin*=0 ; damagemax*=0
+            elif typem=="ground":
+                if move=="千箭齊發":
+                    if "flying" in typdef: continue
+                elif typdef[k] in ["poison", "rock", "steel", "fire", "electric"]:
+                    damagemin*=2 ; damagemax*=2
+                elif typdef[k] in ["bug", "grass"]:
+                    damagemin*=0.5 ; damagemax*=0.5
+                elif typdef[k]=="flying":
+                    damagemin*=0 ; damagemax*=0
+            elif typem=="rock":
+                if typdef[k] in ["flying", "bug", "fire", "ice"]:
+                     damagemin*=2 ; damagemax*=2
+                elif typdef[k] in ["fighting", "ground", "steel"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+            elif typem=="bug":
+                if typdef[k] in ["dark", "psychic", "grass"]:
+                     damagemin*=2 ; damagemax*=2
+                elif typdef[k] in ["fighting", "flying", "poison", "steel", "fire", "fairy", "ghost"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+            elif typem=="ghost":
+                if typdef[k] in ["ghost", "psychic"]:
+                     damagemin*=2 ; damagemax*=2
+                elif typdef[k]=="dark":
+                     damagemin*=0.5 ; damagemax*=0.5
+                elif typdef[k]=="normal":
+                     damagemin*=0 ; damagemax*=0
+            elif typem=="steel":
+                 if typdef[k] in ["ice", "fairy", "rock"]:
+                     damagemin*=2 ; damagemax*=2
+                 elif typdef[k] in ["electric", "fire", "water", "steel"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+            elif typem=="water":
+                 if typdef[k] in ["ground", "fire", "rock"]:
+                     damagemin*=2 ; damagemax*=2
+                 elif typdef[k] in ["grass", "dragon", "water"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+            elif typem=="grass":
+                  if typdef[k] in ["ground", "water", "rock"]:
+                     damagemin*=2 ; damagemax*=2
+                  elif typdef[k] in ["grass", "dragon", "fire", "steel", "flying", "bug", "poison"]: 
+                     damagemin*=0.5 ; damagemax*=0.5
+            elif typem=="fire":
+                  if typdef[k] in ["grass", "ice", "bug", "steel"]:
+                     damagemin*=2 ; damagemax*=2
+                  elif typdef[k] in ["fire", "dragon", "water", "rock"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+            elif typem=="electric":
+                  if typdef[k] in ["water", "flying"]:
+                     damagemin*=2 ; damagemax*=2
+                  elif typdef[k] in ["electric", "dragon", "grass"]:
+                     damagemin*=0.5 ; damagemax*=0.5 
+                  elif typdef[k]=="ground":
+                     damagemin*=0 ; damagemax*=0
+            elif typem=="psychic":
+                  if typdef[k] in ["fighting", "poison"]:
+                     damagemin*=2 ; damagemax*=2
+                  elif typdef[k] in ["steel", "psychic"]:
+                     damagemin*=0.5 ; damagemax*=0.5 
+                  elif typdef[k]=="dark":
+                      damagemin*=0 ; damagemax*=0
+            elif typem=="dragon":
+                  if typdef[k]=="dragon":
+                     damagemin*=2 ; damagemax*=2
+                  elif typdef[k]=="steel":
+                     damagemin*=0.5 ; damagemax*=0.5 
+                  elif typdef[k]=="fairy":
+                     if move!="歸無之光":
+                        damagemin*=0 ; damagemax*=0 
+            elif typem=="ice":      
+                  if typdef[k] in ["flying", "ground", "dragon", "grass"]:
+                     damagemin*=2 ; damagemax*=2
+                  elif typdef[k]=="water":
+                      if move=="冷凍乾燥":
+                         damagemin*=2 ; damagemax*=2
+                      else:
+                         damagemin*=0.5 ; damagemax*=0.5 
+                  elif typdef[k] in ["steel", "fire", "ice"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+            elif typem=="dark":
+                  if typdef[k] in ["ghost", "psychic"]:
+                     damagemin*=2 ; damagemax*=2
+                  elif typdef[k] in ["dark", "fighting", "fairy"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+            elif typem=="fairy":
+                  if typdef[k] in ["dragon", "dark", "fighting"]:
+                     damagemin*=2 ; damagemax*=2
+                  elif typdef[k] in ["steel", "poison", "fire"]:
+                     damagemin*=0.5 ; damagemax*=0.5
+    if plus==True:
+        if damagemin>(dmin*1.7) and damagemax>(dmax*1.7):
+            damagemin*=1.3 ; damagemax*=1.3
+        else:
+            damagemin*=1.2 ; damagemax*=1.2
+    damagemin=math.floor(damagemin) ; damagemax=math.floor(damagemax)
+    listdamage.append(damagemin) ; listdamage.append(damagemax)
+    return listdamage
+
+pokemon={"噴火龍":[78,84,78,109,85,100,["fire","flying"]],"巨沼怪":[100,110,90,85,90,65,["water","ground"]],"巨鉗螳螂":[70,130,100,55,80,65,["bug","steel"]],
+                     "龍頭地鼠":[110,130,60,50,65,88,["ground","steel"]]}
+Move={"熱風":["s","fire",95],"爆炸烈焰":["s","fire",150],"日光束":["s","grass",120],"近身戰":["p","fighting",120],"暴風":["s","flying",110],"大字爆炎":["s","fire",110]}
+Item=["絲綢圍巾","黑帶","銳利鳥嘴","毒針","柔軟沙子","硬石頭","銀粉","詛咒之符","金屬膜","木炭", "神秘水滴","奇跡種子","磁鐵","彎曲的湯匙","不融冰","龍之牙","黑色眼鏡",
+            "妖精之羽","生命寶珠","達人帶","力量頭帶","博識眼鏡","突擊背心",""]
+
+# 25種性格對應表
+nature_effects = {
+    "勤奮 (Hardy)": ("-", "-"), "怕寂寞 (Lonely)": ("A", "B"), "勇敢 (Brave)": ("A", "S"), "固執 (Adamant)": ("A", "C"), "頑皮 (Naughty)": ("A", "D"),
+    "大膽 (Bold)": ("B", "A"), "坦率 (Docile)": ("-", "-"), "悠閒 (Relaxed)": ("B", "S"), "淘氣 (Impish)": ("B", "C"), "樂天 (Lax)": ("B", "D"),
+    "膽小 (Timid)": ("S", "A"), "急躁 (Hasty)": ("S", "B"), "認真 (Serious)": ("-", "-"), "爽朗 (Jolly)": ("S", "C"), "天真 (Naive)": ("S", "D"),
+    "內斂 (Modest)": ("C", "A"), "慢吞吞 (Mild)": ("C", "B"), "冷靜 (Quiet)": ("C", "S"), "害羞 (Bashful)": ("-", "-"), "馬虎 (Rash)": ("C", "D"),
+    "溫和 (Calm)": ("D", "A"), "溫順 (Gentle)": ("D", "B"), "自大 (Sassy)": ("D", "S"), "慎重 (Careful)": ("D", "C"), "浮躁 (Quirky)": ("-", "-")
+}
+
+# --- 2. Streamlit 介面渲染 ---
+
+st.set_page_config(page_title="Pokémon ZA 傷害計算器", layout="wide")
+st.title("⚔️ Pokémon ZA 傷害計算器 (固定Lv.50)")
+
+# 側邊欄設定
+st.sidebar.header("⚙️ 詳細數值設定")
+
+def get_stats_input(prefix):
+    st.sidebar.subheader(f"{prefix}方設定")
+    selected_nature = st.sidebar.selectbox(f"{prefix}性格", list(nature_effects.keys()), key=f"nat_{prefix}")
+    
+    # 性格修正邏輯
+    n_mod = {"A":1.0, "B":1.0, "C":1.0, "D":1.0, "S":1.0}
+    up, down = nature_effects[selected_nature]
+    if up != "-": n_mod[up] = 1.1
+    if down != "-": n_mod[down] = 0.9
+
+    col_iv, col_ev = st.sidebar.columns(2)
+    ivs = {k: col_iv.number_input(f"{k} 個體", 0, 31, 31, key=f"iv_{prefix}_{k}") for k in ["H", "A", "B", "C", "D", "S"]}
+    evs = {k: col_ev.number_input(f"{k} 努力", 0, 252, 0, key=f"ev_{prefix}_{k}") for k in ["H", "A", "B", "C", "D", "S"]}
+    
+    return ivs, evs, n_mod
+
+iv_atk, ev_atk, n_atk = get_stats_input("攻擊")
+iv_def, ev_def, n_def = get_stats_input("防守")
+
+# 固定等級為 50
+LvAtk = 50
+LvDef = 50
+
+# 主畫面選擇
+c1, c2 = st.columns(2)
+with c1:
+    pa = st.selectbox("選擇攻擊方寶可夢", list(pokemon.keys()))
+    item1 = st.selectbox("攻擊方道具", Item)
+    move_name = st.selectbox("選擇招式", list(Move.keys()))
+    criticlehit = st.checkbox("擊中要害 (Crit)")
+    Plus = st.checkbox("是否要Plus (C+)?")
+
+with c2:
+    pd = st.selectbox("選擇防守方寶可夢", list(pokemon.keys()))
+    item2 = st.selectbox("防守方道具", Item)
+    Reflection = st.checkbox("反射壁 (物理減半)")
+    Lightscreen = st.checkbox("光牆 (特殊減半)")
+    is_burn = st.checkbox("攻擊方處於灼傷狀態")
+
+# 計算能力值 (公式完全保留)
+def calc_stat(base, iv, ev, lv, nature_mod, is_hp=False):
+    if is_hp:
+        return int((((math.floor(base*2+iv+(ev/4)))*lv)/100)+10+lv)
+    else:
+        return int(((((math.floor(base*2+iv+(ev/4)))*lv)/100)+5)*nature_mod)
+
+# 建立原始數據結構以配合原本函數
+abAtk = {
+    "H": calc_stat(pokemon[pa][0], iv_atk["H"], ev_atk["H"], LvAtk, 1, True),
+    "A": calc_stat(pokemon[pa][1], iv_atk["A"], ev_atk["A"], LvAtk, n_atk["A"]),
+    "B": calc_stat(pokemon[pa][2], iv_atk["B"], ev_atk["B"], LvAtk, n_atk["B"]),
+    "C": calc_stat(pokemon[pa][3], iv_atk["C"], ev_atk["C"], LvAtk, n_atk["C"]),
+    "D": calc_stat(pokemon[pa][4], iv_atk["D"], ev_atk["D"], LvAtk, n_atk["D"]),
+    "S": calc_stat(pokemon[pa][5], iv_atk["S"], ev_atk["S"], LvAtk, n_atk["S"]),
+    "Type": pokemon[pa][6]
+}
+
+abDef = {
+    "H": calc_stat(pokemon[pd][0], iv_def["H"], ev_def["H"], LvDef, 1, True),
+    "A": calc_stat(pokemon[pd][1], iv_def["A"], ev_def["A"], LvDef, n_def["A"]),
+    "B": calc_stat(pokemon[pd][2], iv_def["B"], ev_def["B"], LvDef, n_def["B"]),
+    "C": calc_stat(pokemon[pd][3], iv_def["C"], ev_def["C"], LvDef, n_def["C"]),
+    "D": calc_stat(pokemon[pd][4], iv_def["D"], ev_def["D"], LvDef, n_def["D"]),
+    "S": calc_stat(pokemon[pd][5], iv_def["S"], ev_def["S"], LvDef, n_def["S"]),
+    "Type": pokemon[pd][6]
+}
+
+# 觸發計算
+if st.button("🔮 執行計算", use_container_width=True):
+    move = Move[move_name]
+    if move[0] == "s":
+        listdamage = Spower(move[2], abAtk["C"], abDef["D"], 1, 1, criticlehit, Lightscreen, abAtk["Type"], move[1], abDef["Type"], is_burn, False, False, Plus, move_name)
+    else:
+        listdamage = Ppower(move[2], abAtk["A"], abDef["B"], 1, 1, criticlehit, Reflection, abAtk["Type"], move[1], abDef["Type"], is_burn, False, False, Plus, move_name)
+
+    # 結果輸出區
+    st.divider()
+    permin = listdamage[0]/abDef["H"]
+    permax = listdamage[1]/abDef["H"]
+    
+    st.subheader(f"📊 {pa} 對 {pd} 的傷害分析")
+    st.write(f"對手 HP: {abDef['H']} | 造成傷害: **{listdamage[0]} ~ {listdamage[1]}**")
+    st.write(f"傷害百分比: **{permin:.1%} ~ {permax:.1%}**")
+
+    # 擊殺判斷邏輯
+    if permin >= 1:
+        st.success("🏆 確定一擊擊倒 (確一)")
+    elif permin < 1 and permax >= 1:
+        killper = (listdamage[1]-abDef["H"])/(listdamage[1]-listdamage[0]) if listdamage[1] != listdamage[0] else 1.0
+        st.warning(f"🎲 亂數一擊擊倒 (擊殺率: {killper:.1%})")
+    elif permin >= 0.5:
+        st.info("🎯 確定二擊擊倒 (確二)")
+    elif permax >= 0.5:
+        st.info("⚖️ 亂數二擊擊倒 (亂二)")
+    else:
+        st.error("📉 傷害不足 (不夠痛)")
+
+    with st.expander("查看實際能力面板 (Lv.50)"):
+        st.write("攻擊方:", abAtk)
+        st.write("防守方:", abDef)
